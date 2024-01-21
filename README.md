@@ -5,7 +5,7 @@ Here is the link for the test API where you can find public credentials to give 
 
 ## prerequisite
 - Julia Lang [https://julialang.org/](https://julialang.org/)
-- create a `credentials.csv` file at the root of this repository with two columns `user` and `apikey`. Example with a public key:
+- create a `credentials/credentials.csv` file with two columns `user` and `apikey`. Example with a public key:
   
 | user    | apikey |
 | -------- | ------- |
