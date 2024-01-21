@@ -25,11 +25,16 @@ usrCredentials = filter(:user => n -> n == user, credentials) #récupération de
 apiKey = usrCredentials[1, :apikey] #clé API
 
 # API Nakala
-urlFiles = "https://api.nakala.fr/datas/uploads"
-urlMeta = "https://api.nakala.fr/datas"
-# API test Nakala
-#urlFiles = "https://apitest.nakala.fr/datas/uploads" # API test
-#urlMeta = "https://apitest.nakala.fr/datas" # API test
+apitest = false
+
+if apitest == true
+  apiurl = "https://apitest.nakala.fr"
+else
+  apiurl = "https://api.nakala.fr" 
+end
+
+urlFiles = joinpath(apiurl, "datas", "uploads")
+urlMeta = joinpath(apiurl, "datas")
 
 # Data upload
 include("listFile.jl") # un script qui crée, pour chaque sous-dossier, la liste des images à envoyer.
@@ -206,4 +211,3 @@ for directory in directories
     end
   close(f)
 end
-
