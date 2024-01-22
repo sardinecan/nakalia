@@ -33,8 +33,8 @@ else
   apiurl = "https://api.nakala.fr" 
 end
 
-urlFiles = joinpath(apiurl, "datas", "uploads")
-urlMeta = joinpath(apiurl, "datas")
+filesUrl = joinpath(apiurl, "datas", "uploads")
+metadataUrl = joinpath(apiurl, "datas")
 
 # Data upload
 include("listFile.jl") # un script qui crée, pour chaque sous-dossier, la liste des images à envoyer.
@@ -59,7 +59,7 @@ for directory in directories
     file = open(joinpath(path, directory, filename), "r")
     body = HTTP.Form(Dict(:file => file))
 
-    fileUpload = HTTP.post(urlFiles, headers, body)
+    fileUpload = HTTP.post(filesUrl, headers, body)
     fileResponse = JSON.parse(String(HTTP.payload(fileUpload)))
     fileIdentifier = fileResponse["sha1"]
     println(fileIdentifier)
@@ -184,7 +184,7 @@ for directory in directories
     "Content-Type" => "application/json"
   )
    
-  metadataUpload = HTTP.request("POST", urlMeta, headers, JSON.json(postdata))
+  metadataUpload = HTTP.request("POST", metadataUrl, headers, JSON.json(postdata))
   metadataResponse = JSON.parse(String(HTTP.payload(metadataUpload))) # réponse du server
   metadataId = metadataResponse["payload"]["id"] # récupération de l'identifiant Nakala de la ressource (identifier)
     
