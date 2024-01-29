@@ -8,8 +8,8 @@ using Dates
 
 #%% credentials
 path = @__DIR__
-credentials = CSV.read(joinpath(path,"credentials.csv"), DataFrame, header=1) #liste des utilisateurs
-user = "jmorvan" #choix de l'utilisateur (api test = nakala)
+credentials = CSV.read(joinpath(path, "credentials", "credentials.csv"), DataFrame, header=1) #liste des utilisateurs
+user = "tnakala" #choix de l'utilisateur (api test = tnakala)
 usrCredentials = filter(:user => n -> n == user, credentials) #récupération des identifiants
 apiKey = usrCredentials[1, :apikey] #clé API
 
