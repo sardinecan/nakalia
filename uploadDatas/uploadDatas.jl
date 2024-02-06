@@ -25,7 +25,7 @@ usrCredentials = filter(:user => n -> n == user, credentials) #récupération de
 apiKey = usrCredentials[1, :apikey] #clé API
 
 # API Nakala
-apitest = false
+apitest = true
 
 if apitest == true
   apiurl = "https://apitest.nakala.fr"
@@ -36,7 +36,6 @@ end
 filesUrl = joinpath(apiurl, "datas", "uploads")
 metadataUrl = joinpath(apiurl, "datas")
 
-# Data upload
 include("listFile.jl") # un script qui crée, pour chaque sous-dossier, la liste des images à envoyer.
 directories
 for directory in directories
@@ -71,23 +70,28 @@ for directory in directories
   # métadonnées de la ressource
   meta = Vector()
 
-  metadata = CSV.read(joinpath(path, "metadata.csv"), DataFrame, header=1) # fichier de métadonnées 
+  metadata = CSV.read(joinpath(path, directory, "metadata.csv"), DataFrame, header=1) # fichier de métadonnées 
 
-  collections = split(metadata[!, :collections][1], ";")
+  metadata[!, :collections][1] !== missing  ? collections = split(metadata[!, :collections][1], ";") : collections = nothing
   authors = split(metadata[!, :authors][1], ";")
   date = metadata[!, :date][1]
   license = metadata[!, :licence][1]
   status = metadata[!, :status][1]
   datatype = metadata[!, :datatype][1]
   description = metadata[!, :description][1]
-  keywords = split(metadata[!, :keywords][1], ";")
-  datarights = split(metadata[!, :rights][1], ";")
+
+  metadata[!, :collections][1] !== missing  ? keywords = split(metadata[!, :keywords][1], ";") : keywords = nothing
+  
+  metadata[!, :collections][1] !== missing  ? datarights = split(metadata[!, :rights][1], ";") : datarights = nothing
+  lang = metadata[!, :lang][1]
 
   # titre (obligatoire)
   metaTitle = Dict(
     :value => directory,
     :typeUri => "http://www.w3.org/2001/XMLSchema#string",
-    :propertyUri => "http://nakala.fr/terms#title"
+    :propertyUri => "http://nakala.fr/terms#title",
+    :lang => lang
+
   )
   push!(meta, metaTitle)
 
@@ -115,7 +119,7 @@ for directory in directories
       metaAuthor = Dict(
         :value => Dict(
           :givenname => author,
-          :surname => ""
+          :surname => author
         ),
         :propertyUri => "http://nakala.fr/terms#creator"
       )
@@ -141,32 +145,36 @@ for directory in directories
 
   # Droits (facultatif)
   rights = []
-  for dataright in datarights
-    right = Dict(
-      :id => split(dataright, ",")[1],
-      :role => split(dataright, ",")[2]
-    )
-    push!(rights, right)
+  if datarights !== nothing
+    for dataright in datarights
+      right = Dict(
+        :id => split(dataright, ",")[1],
+        :role => split(dataright, ",")[2]
+      )
+      push!(rights, right)
+    end
   end
 
   # Description (facultatif)
   metaDescription = Dict(
     :value => description,
-    :lang => "fr",
+    :lang => lang,
     :typeUri => "http://www.w3.org/2001/XMLSchema#string",
     :propertyUri => "http://purl.org/dc/terms/description"
   )
   push!(meta, metaDescription)
 
   # Mots-clés
-  for keyword in keywords
-    metaKeyword = Dict(
-      :value => keyword,
-      :lang => "fr",
-      :typeUri => "http://www.w3.org/2001/XMLSchema#string",
-      :propertyUri => "http://purl.org/dc/terms/subject"
-    )
-    push!(meta, metaKeyword)
+  if keywords !== nothing
+    for keyword in keywords
+      metaKeyword = Dict(
+        :value => keyword,
+        :lang => lang,
+        :typeUri => "http://www.w3.org/2001/XMLSchema#string",
+        :propertyUri => "http://purl.org/dc/terms/subject"
+      )
+      push!(meta, metaKeyword)
+    end
   end
 
   # assemblage des métadonnées avant envoi de la ressource
@@ -203,8 +211,8 @@ for directory in directories
   end
 
   
-  touch(joinpath(path, directory*".csv"))
-  f = open(joinpath(path, directory*".csv"), "w") 
+  touch(joinpath(path, directory, directory*".csv"))
+  f = open(joinpath(path, directory, directory*".csv"), "w") 
     write(f, "filename,identifier,fileIdentifier")
     for file in filesInfo
       write(f, "\n"*file[1]*","*metadataId*","*file[2])
