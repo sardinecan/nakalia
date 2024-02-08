@@ -79,6 +79,7 @@ for directory in directories
   status = metadata[!, :status][1]
   datatype = metadata[!, :datatype][1]
   description = metadata[!, :description][1]
+  lang = metadata[!, :lang][1]
 
   metadata[!, :collections][1] !== missing  ? keywords = split(metadata[!, :keywords][1], ";") : keywords = nothing
   
