@@ -5,7 +5,7 @@ Here is the link for the test API where you can find public credentials to give 
 
 ## prerequisite
 - Julia Lang [https://julialang.org/](https://julialang.org/)
-- create a `credentials/credentials.csv` file with two columns `user` and `apikey`. Example with a public key:
+- create a `credentials.csv` file with two columns `user` and `apikey`. Example with a public key:
   
 | user    | apikey |
 | -------- | ------- |
@@ -15,10 +15,6 @@ Here is the link for the test API where you can find public credentials to give 
 ```
 nakala
 ├── API_nakala.jl // Generic script to get informations about user, etc. (should be a notebook)
-├── uploadDatas/ // to upload data to nakala (data ≠ file: one folder = one data)
-│   ├── listFile.jl // this script lists files contained in a folder
-│   ├── metadata.csv // the metadata of the data
-│   └── uploadDatas.jl // the file to execute to upload data
-├── tmp/ // temporary files, test, etc.
+├── listFile.jl // this script lists files contained in folders (used to upload data and files)
 └── README.md
 ```
