@@ -14,6 +14,7 @@ path = @__DIR__
 
 directories = []
 for (root, dirs, files) in walkdir(path)
+  filter!(x -> startswith(x, ".") == false, dirs)
   for dir in dirs
     touch(joinpath(root, dir, "files.csv"))
     f = open(joinpath(root, dir, "files.csv"), "w")
