@@ -10,7 +10,8 @@ using CSV
 using DataFrames
 
 #%% 
-path = @__DIR__
+basePath = @__DIR__
+path = joinpath(basePath, "datasToSubmit")
 
 directories = []
 for (root, dirs, files) in walkdir(path)
