@@ -12,80 +12,83 @@ localARGS = isdefined(Base, :newARGS) ? newARGS : ARGS
 
 apikey = localARGS
 
-function createCollection(collectionName)
-    url = joinpath(apiurl, "collections")
+function createCollection(collectionName::String)
+  url = joinpath(apiurl, "collections")
+  headers = Dict(
+    "X-API-KEY" => apiKey,
+    "Content-Type" => "application/json"
+  )
 
-    headers = Dict(
-        "X-API-KEY" => apiKey,
-        "Content-Type" => "application/json"
-    )
+  body = Dict(
+    :status => "private",
+    :metas =>  [Dict(
+      :value => collectionName,
+      :propertyUri => "http://nakala.fr/terms#title",
+      :typeUri => "http://www.w3.org/2001/XMLSchema#string",
+      :lang => "fr"
+    )]
+  )
 
-    body = Dict(
-        :status => "private",
-        :metas =>  [Dict(
-            :value => collectionName,
-            :propertyUri => "http://nakala.fr/terms#title",
-            :typeUri => "http://www.w3.org/2001/XMLSchema#string",
-            :lang => "fr"
-        )]
-    )
-
-    postCollection = HTTP.request("POST", url, headers, JSON.json(body)) # envoi des données pour la création de la collection
-    collectionResponse = JSON.parse(String(HTTP.payload(postCollection))) # réponse du server
-    collectionId = collectionResponse["payload"]["id"] # récupération de l'id de la collection
-    return print("Identifiant de la collection : ", collectionId)
+  postCollection = HTTP.request("POST", url, headers, JSON.json(body)) # envoi des données pour la création de la collection
+  collectionResponse = JSON.parse(String(HTTP.payload(postCollection))) # réponse du server
+  collectionId = collectionResponse["payload"]["id"] # récupération de l'id de la collection
+  
+  return print("Identifiant de la collection : ", collectionId)
 end
 
-function addDatas2Collection(collectionIdentifier::String, datas::Vector)
-    url = joinpath(apiurl, "collections", collectionIdentifier, "datas")
+function postDatasToCollection(collectionIdentifier::String, datas::Vector)
+  url = joinpath(apiurl, "collections", collectionIdentifier, "datas")
 
-    headers = Dict(
-        "X-API-KEY" => apiKey,
-        "Content-Type" => "application/json"
-    )
+  headers = Dict(
+    "X-API-KEY" => apiKey,
+    "Content-Type" => "application/json"
+  )
   
-    body = datas
+  body = datas
   
-    postDatasToCollection = HTTP.request("POST", url, headers, JSON.json(body)) # ajoute les données listées ci-dessus à une collection
-    response = JSON.parse(String(HTTP.payload(postDatasToCollection))) # réponse du server
+  postDatasToCollectionQuery = HTTP.request("POST", url, headers, JSON.json(body)) # ajoute les données listées ci-dessus à une collection
+  response = JSON.parse(String(HTTP.payload(postDatasToCollectionQuery))) # réponse du server
+
+  return response
 end
 
-function removeDatasFromCollection(collectionIdentifier::String, datas::Vector)
-    url = joinpath(apiurl, "collections", collectionIdentifier, "datas")
+function deleteDatasFromCollection(collectionIdentifier::String, datas::Vector)
+  url = joinpath(apiurl, "collections", collectionIdentifier, "datas")
 
-    headers = Dict(
-        "X-API-KEY" => apiKey,
-        "Content-Type" => "application/json"
-    )
+  headers = Dict(
+    "X-API-KEY" => apiKey,
+    "Content-Type" => "application/json"
+  )
   
-    body = datas
+  body = datas
   
-    rmDatasFromCollection = HTTP.request("DELETE", url, headers, JSON.json(body)) # supprime les données listées plus haut de la collection
-    response = JSON.parse(String(HTTP.payload(rmDatasFromCollection))) # réponse du server  
+  deleteDataFromCollectionQuery = HTTP.request("DELETE", url, headers, JSON.json(body)) # supprime les données listées plus haut de la collection
+  response = JSON.parse(String(HTTP.payload(deleteDataFromCollectionQuery))) # réponse du server
+
+  return response
 end
 
-function userInfo()
-    url = joinpath(apiurl, "users", "me")
+function getUserInfo()
+  url = joinpath(apiurl, "users", "me")
 
-    headers = Dict(
-        "X-API-KEY" => apiKey,
-        "Content-Type" => "application/json"
-    )
+  headers = Dict(
+    "X-API-KEY" => apiKey,
+    "Content-Type" => "application/json"
+  )
+
+  getUserInfoQuery = HTTP.request("GET", url, headers)
+  response = JSON.parse(String(HTTP.payload(getUserInfoQuery))) # réponse du server
   
-    userInfo = HTTP.request("GET", url, headers)
-    userInfoResponse = JSON.parse(String(HTTP.payload(userInfo))) # réponse du server
-    username = userInfoResponse["username"]
-    userGroupId = userInfoResponse["userGroupId"]
-    
-    return userInfoResponse  
+  return response
 end
 
-function getUserDatas(scope::String="all", status::Vector=[], titleSearch::String="")
-    url = joinpath(apiurl, "users", "datas", scope)
-    headers = Dict(
-        "X-API-KEY" => apiKey,
-        "Content-Type" => "application/json"
-    )
+function postUserDatas(scope::String="all", status::Vector=[], titleSearch::String="")
+  url = joinpath(apiurl, "users", "datas", scope)
+  
+  headers = Dict(
+    "X-API-KEY" => apiKey,
+    "Content-Type" => "application/json"
+  )
     
     #=
     body = Dict(
@@ -112,46 +115,64 @@ function getUserDatas(scope::String="all", status::Vector=[], titleSearch::Strin
     )
     =#
     
-    body = Dict{Symbol, Any}(
-        :page => 1,
-        :limit => 250
-    )
+  body = Dict{Symbol, Any}(
+    :page => 1,
+    :limit => 250
+  )
 
-    statusParameter = Dict(
-        :status => status
-    )
+  statusParameter = Dict(
+    :status => status
+  )
+  length(status) == 0 ? Nothing : merge!(body, statusParameter) # fusionne les dict body et statusParameter si ce paramètre est renseigné
 
-    titleSearchParameter = Dict(
-        :titleSearch => titleSearch
-    )
-
-    length(status) == 0 ? Nothing : merge!(body, statusParameter) # fusionne les dict body et statusParameter si ce paramètre est renseigné
-
-    titleSearch == "" ? Nothing : merge!(body, titleSearchParameter) # fusionne les dict body et titleSearchParameter si ce paramètre est renseigné
+  titleSearchParameter = Dict(
+    :titleSearch => titleSearch
+  )
+  titleSearch == "" ? Nothing : merge!(body, titleSearchParameter) # fusionne les dict body et titleSearchParameter si ce paramètre est renseigné
     
-    userDatas = HTTP.request("POST", url, headers, JSON.json(body))
-    userDatasResponse = JSON.parse(String(HTTP.payload(userDatas))) # réponse du server
+  postUserDatas = HTTP.request("POST", url, headers, JSON.json(body))
+  response = JSON.parse(String(HTTP.payload(postUserDatas))) # réponse du server
 
-    return userDatasResponse
+  return response
 end
 
-function publishData(pendingDataIdentifier)
-    headers = Dict(
-        "X-API-KEY" => apiKey,
-        "Content-Type" => "application/json"
-    )
+function putDataStatus(dataIdentifier::String, newStatus::String)
+  url = joinpath(apiurl, "datas", dataIdentifier, "status", newStatus)
+  
+  headers = Dict(
+    "X-API-KEY" => apiKey,
+    "Content-Type" => "application/json"
+  )
     
-    url = joinpath(apiurl, "datas", pendingDataIdentifier, "status", "published")
-    publishData = HTTP.put(url, headers)
-    #publishDataResponse = JSON.parse(String(HTTP.payload(publishData))) # réponse du server 
-    return publishData
+  putDataStatusQuery = HTTP.put(url, headers)
+  #response = JSON.parse(String(HTTP.payload(putDataStatusQuery))) # réponse du server 
+  
+  return putDataStatusQuery
+end
+
+function getDatasResume(datas::Vector{Any})
+  list = Vector()
+  for data in datas
+  
+    identifier = get(data, "identifier", "")
+    metas = get(data, "metas", "")
+    
+    title = filter(x -> get(x, "propertyUri", "") == "http://nakala.fr/terms#title", metas)[1]
+
+    item = Dict(
+      get(title, "value", "noTitle") => identifier
+    )
+    push!(list, item)
   end
 
-function downloadFiles(data, title)
+  return list
+end
+
+function downloadFiles(data::Dict, title::String)
     identifier = get(data, "identifier", "")
     filesList = get(data, "files", "")
   
-    isdir(joinpath(path, title)) ? Nothing : mkdir(joinpath(path, title)) #création d'un dossier 
+    isdir(joinpath(path, title)) ? Nothing : mkdir(joinpath(path, title)) #création d'un dossier correspondant au titre de la donnée
 
     urls = Vector()
     for file in filesList
@@ -165,7 +186,8 @@ function downloadFiles(data, title)
 
         push!(urls, fileUrl)
     end
-  return urls
+ 
+    return urls
 end
 
 function getFilesFromData(data, filenames)
