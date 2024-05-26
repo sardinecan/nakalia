@@ -190,7 +190,7 @@ function downloadFiles(data::Dict, title::String)
     return urls
 end
 
-function getFilesFromData(data, filenames)
+function getFilesUrlFromData(data::Dict, filenames::Vector)
     identifier = get(data, "identifier", "")
     filesList = get(data, "files", "")
 
@@ -206,7 +206,7 @@ function getFilesFromData(data, filenames)
     return urls
 end
 
-function postFile(file)
+function postFile(file::String)
   file = open(file, "r")
 
   headers = Dict(
@@ -224,7 +224,7 @@ function postFile(file)
   return response
 end
 
-function postFilesFromList(directoryPath)
+function postFilesFromList(directoryPath::String)
   files2upload = CSV.read(joinpath(directoryPath, "files.csv"), DataFrame, header=1) # fichier de métadonnées 
 
   #%% Dépôt des fichiers
@@ -245,16 +245,24 @@ function postFilesFromList(directoryPath)
   return [files, filesInfo]
 end
 
-function postData(directory)
-    postedFilesFromList = postFilesFromList(joinpath(path, directory))
-    files = postedFilesFromList[1]
-    filesInfo = postedFilesFromList[2]
+function postData(data::Dict)
+  url = joinpath(apiurl, "datas")
+  
+  headers = Dict(
+    "X-API-KEY" => apiKey,
+    "Content-Type" => "application/json"
+  )
 
-  # métadonnées de la ressource
-  meta = Vector()
+  postData = HTTP.request("POST", url, headers, JSON.json(data))
+  response = JSON.parse(String(HTTP.payload(postData))) # réponse du server
 
-  metadata = CSV.read(joinpath(path, directory, "metadata.csv"), DataFrame, header=1) # fichier de métadonnées 
+  return response
+end
 
+function metadataFromCsv(path::String)
+  metadata = CSV.read(path, DataFrame, header=1) # fichier de métadonnées 
+
+  title = metadata[!, :title][1] 
   metadata[!, :collections][1] !== missing  ? collections = split(metadata[!, :collections][1], ";") : collections = nothing
   authors = split(metadata[!, :authors][1], ";")
   date = metadata[!, :date][1]
@@ -265,10 +273,13 @@ function postData(directory)
   metadata[!, :collections][1] !== missing  ? keywords = split(metadata[!, :keywords][1], ";") : keywords = nothing
   metadata[!, :collections][1] !== missing  ? datarights = split(metadata[!, :rights][1], ";") : datarights = nothing
   lang = metadata[!, :lang][1]
+  
+  # métadonnées de la ressource
+  meta = Vector()
 
   # titre (obligatoire)
   metaTitle = Dict(
-    :value => directory,
+    :value => title,
     :typeUri => "http://www.w3.org/2001/XMLSchema#string",
     :propertyUri => "http://nakala.fr/terms#title",
     :lang => lang
@@ -359,38 +370,39 @@ function postData(directory)
   end
 
   # assemblage des métadonnées avant envoi de la ressource
-  postdata = Dict(
+  body = Dict{Symbol, Any}(
     :collectionsIds => collections,
-    :status => "pending",
-    :files => files,
+    :status => "pending"
     :metas => meta,
     :rights => rights
   )
-  println(JSON.json(postdata))
 
-  headers = Dict(
-    "X-API-KEY" => apiKey,
-    "Content-Type" => "application/json"
-  )
+  return body
+end
 
+function submitDataFromFolder(path::String, directory::String)
+  postedFilesFromList = postFilesFromList(joinpath(path, directory))
+  files = Dict( :files => postedFilesFromList[1] )
+  filesInfo = postedFilesFromList[2]
+
+  metadata = metadataFromCsv(joinpath(path, directory, "metadata.csv"))
+
+  merge!(metadata, files) 
+
+  postedData = postData(metadata)
+  dataIdentifier = postedData["payload"]["id"] # récupération de l'identifiant Nakala de la ressource (identifier)
   
-  metadataUrl = joinpath(apiurl, "datas")
-   
-  metadataUpload = HTTP.request("POST", metadataUrl, headers, JSON.json(postdata))
-  metadataResponse = JSON.parse(String(HTTP.payload(metadataUpload))) # réponse du server
-  metadataId = metadataResponse["payload"]["id"] # récupération de l'identifiant Nakala de la ressource (identifier)
-    
-  println(metadataId)
-
+  return dataIdentifier
+  
   if isfile(joinpath(path, "datasUploaded.csv"))
     f = open(joinpath(path, "datasUploaded.csv"), "a")       
-      write(f, "\n"*directory*","*metadataId)
+      write(f, "\n"*directory*","*dataIdentifier)
     close(f)      
   else
     touch(joinpath(path, "datasUploaded.csv"))
     f = open(joinpath(path, "datasUploaded.csv"), "w") 
       write(f, "ressource,identifiant")
-      write(f, "\n"*directory*","*metadataId)
+      write(f, "\n"*directory*","*dataIdentifier)
     close(f)
   end
 
@@ -399,7 +411,7 @@ function postData(directory)
   f = open(joinpath(path, directory, directory*".csv"), "w") 
     write(f, "filename,identifier,fileIdentifier")
     for file in filesInfo
-      write(f, "\n"*file[1]*","*metadataId*","*file[2])
+      write(f, "\n"*file[1]*","*dataIdentifier*","*file[2])
     end
   close(f)
 end
