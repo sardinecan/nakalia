@@ -11,10 +11,28 @@ Here is the link for the test API where you can find public credentials to give 
 | -------- | ------- |
 | tnakala  | 01234567-89ab-cdef-0123-456789abcdef  |
 
+## Julia Env 
+```julia
+> git clone https://github.com/sardinecan/nakalia
+  Cloning into 'nakalia'...
+
+# With Julia
+(@v1.8) pkg> activate nakalia
+  Activating project at ~/nakalia
+
+(nakalia) pkg> instantiate
+  No Changes to `~/nakalia/Project.toml`
+  No Changes to `~/nakalia/Manifest.toml`
+```
+
 ## repo map
 ```
 nakalia
-├── API_nakala.jl // Generic script to get informations about user, etc. (should be a notebook)
-├── listFile.jl // this script lists files contained in folders (used to upload data and files)
+├── dataToSubmit // data sample (see notebook)
+├── filesToUpload // data sample (see notebook)
+├── API_nakala.ipynb // a Julia Notebook with examples
+├── functions.jl // a library of documented functions to query the Nakala's API
+├── Manifest.toml
+├── Project.toml
 └── README.md
 ```

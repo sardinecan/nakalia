@@ -9,10 +9,14 @@
 
 localARGS = isdefined(Base, :newARGS) ? newARGS : ARGS
 @show localARGS
-
 apikey = localARGS
 
-function createCollection(collectionName::String)
+#=
+postCollection : cette fonction crée une collection
+@arg collectionName : nom de la collection
+@return : réponse du serveur avec id de la collection
+=#
+function postCollection(collectionName::String)
   url = joinpath(apiurl, "collections")
   headers = Dict(
     "X-API-KEY" => apiKey,
@@ -29,13 +33,19 @@ function createCollection(collectionName::String)
     )]
   )
 
-  postCollection = HTTP.request("POST", url, headers, JSON.json(body)) # envoi des données pour la création de la collection
-  collectionResponse = JSON.parse(String(HTTP.payload(postCollection))) # réponse du server
-  collectionId = collectionResponse["payload"]["id"] # récupération de l'id de la collection
+  postCollectionQuery = HTTP.request("POST", url, headers, JSON.json(body)) # envoi des données pour la création de la collection
+  response = JSON.parse(String(HTTP.payload(postCollectionQuery))) # réponse du server
+  #collectionId = collectionResponse["payload"]["id"] # récupération de l'id de la collection
   
-  return print("Identifiant de la collection : ", collectionId)
+  return response
 end
 
+#=
+postDatasToCollection : cette fonction lie des données à une collection
+@arg collectionIdentifier : identifiant de la collection
+@arg datas : un array comportant les identifiants des données à lier
+@return : réponse du serveur
+=#
 function postDatasToCollection(collectionIdentifier::String, datas::Vector)
   url = joinpath(apiurl, "collections", collectionIdentifier, "datas")
 
@@ -52,6 +62,12 @@ function postDatasToCollection(collectionIdentifier::String, datas::Vector)
   return response
 end
 
+#=
+deleteDataFromCollectionQuery : retire des données d'une collection
+@arg collectionIdentifier : identifiant de la collection
+@arg datas : un array comportant les identifiants des données à retirer
+@return : réponse du serveur
+=#
 function deleteDatasFromCollection(collectionIdentifier::String, datas::Vector)
   url = joinpath(apiurl, "collections", collectionIdentifier, "datas")
 
@@ -68,6 +84,10 @@ function deleteDatasFromCollection(collectionIdentifier::String, datas::Vector)
   return response
 end
 
+#=
+getUserInfo : liste les données utilisateur
+@return réponse serveur (Dict)
+=#
 function getUserInfo()
   url = joinpath(apiurl, "users", "me")
 
@@ -82,6 +102,13 @@ function getUserInfo()
   return response
 end
 
+#=
+postUserDatas : récupération des données d'un utilisateur
+@arg scope (facultatif) : périmètre des données
+@arg status (facultatif) : status des données
+@arg titleSearch (facultatif) : titre pour portion de titre
+@return réponse serveur (Dict de la donnée)
+=#
 function postUserDatas(scope::String="all", status::Vector=[], titleSearch::String="")
   url = joinpath(apiurl, "users", "datas", scope)
   
@@ -136,6 +163,11 @@ function postUserDatas(scope::String="all", status::Vector=[], titleSearch::Stri
   return response
 end
 
+#=
+putDataStatus : modifie le statut d'une donnée
+@arg dataIdentifier : identifiant de la donnée
+@arg newStatus : nouveau statut de la donnée
+=#
 function putDataStatus(dataIdentifier::String, newStatus::String)
   url = joinpath(apiurl, "datas", dataIdentifier, "status", newStatus)
   
@@ -150,6 +182,11 @@ function putDataStatus(dataIdentifier::String, newStatus::String)
   return putDataStatusQuery
 end
 
+#=
+getDatasResume : résumé d'un jeu de donnée
+@arg datas : un array de dictionnaires de données nakala
+@return un array de dict titre => identifiant
+=#
 function getDatasResume(datas::Vector{Any})
   list = Vector()
   for data in datas
@@ -168,9 +205,19 @@ function getDatasResume(datas::Vector{Any})
   return list
 end
 
-function downloadFiles(data::Dict, title::String)
+#=
+downloadFiles télécharge les fichiers d'une donnée
+@arg data : les métadonnées d'une donnée nakala
+@arg path : emplacement de la sauvegarde
+
+@return : télécharge les fichiers et retourne la liste des urls de téléchargement
+=#
+function downloadFiles(data::Dict, path::String)
     identifier = get(data, "identifier", "")
     filesList = get(data, "files", "")
+    metadata = get(data, "metas", "")
+    title = get(metadata, "title", "")
+
   
     isdir(joinpath(path, title)) ? Nothing : mkdir(joinpath(path, title)) #création d'un dossier correspondant au titre de la donnée
 
@@ -190,6 +237,13 @@ function downloadFiles(data::Dict, title::String)
     return urls
 end
 
+#=
+getFilesUrlFromData : recherche un fichier dans un donnée et retourne son url de téléchargement
+@arg data : métadonnée d'une donnée Nakala
+@arg filename : le fichier à rechercher dans la donnée
+
+@return url de téléchargement
+=#
 function getFilesUrlFromData(data::Dict, filenames::Vector)
     identifier = get(data, "identifier", "")
     filesList = get(data, "files", "")
@@ -206,7 +260,15 @@ function getFilesUrlFromData(data::Dict, filenames::Vector)
     return urls
 end
 
+#=
+postFile : dépôt d'un fichier 
+@arg file : chemin vers le fichier à déposer
+
+@return : réponse serveur contenant l'identifiant du fichier
+=#
 function postFile(file::String)
+  url = joinpath(apiurl, "datas", "uploads")
+
   file = open(file, "r")
 
   headers = Dict(
@@ -216,14 +278,18 @@ function postFile(file::String)
   
   body = HTTP.Form(Dict(:file => file))
   
-  url = joinpath(apiurl, "datas", "uploads")
-  
   postFile = HTTP.post(url, headers, body)
   response = JSON.parse(String(HTTP.payload(postFile)))
   
   return response
 end
 
+#=
+postFilesFromList : dépot de fichiers à partir d'un liste csv
+@arg directoryPath : chemin vers le dossier contenant les fichiers à déposer et la liste
+
+@return : array [ métadonnées des fichiers déposés ]
+=#
 function postFilesFromList(directoryPath::String)
   files2upload = CSV.read(joinpath(directoryPath, "files.csv"), DataFrame, header=1) # fichier de métadonnées 
 
@@ -245,6 +311,12 @@ function postFilesFromList(directoryPath::String)
   return [files, filesInfo]
 end
 
+#=
+postData : dépôt d'une donnée
+@arg data : métadonnées de la donnée à déposer
+
+@return réponse du serveur (dict)
+=#
 function postData(data::Dict)
   url = joinpath(apiurl, "datas")
   
@@ -259,6 +331,10 @@ function postData(data::Dict)
   return response
 end
 
+#=
+metadataFromCsv : établissement des métadonnées d'une donnée à partir d'un fichier csv
+@arg path : chemin vers le fichier de métadonnées
+=#
 function metadataFromCsv(path::String)
   metadata = CSV.read(path, DataFrame, header=1) # fichier de métadonnées 
 
@@ -380,6 +456,11 @@ function metadataFromCsv(path::String)
   return body
 end
 
+#=
+submitDataFromFolder : dépôt d'une donnée à partir d'un dossier contenant les fichiers constitutifs de la donnée et les métadonnées contenus dans un ficheir csv
+@arg path : chemin vers le dossier contenant les données à déposer
+@arg directory : nom du dossier constitutif de la donnée
+=#
 function submitDataFromFolder(path::String, directory::String)
   postedFilesFromList = postFilesFromList(joinpath(path, directory))
   files = Dict( :files => postedFilesFromList[1] )
@@ -416,6 +497,12 @@ function submitDataFromFolder(path::String, directory::String)
   close(f)
 end
 
+#=
+listFile : liste le contenu d'un dossier et écrit un fichier files.csv dans chaque sous-dossier (donnée) comportant tous les fichiers à déposer pour chaque donnée
+@arg path : chemin vers le dossier à lister
+
+@return : la liste des dossiers correspondant aux données 
+=#
 function listFile(path)
   directories = []
   for (root, dirs, files) in walkdir(path)
@@ -445,11 +532,16 @@ function listFile(path)
 
     end
   end
+  
   return directories
-
 end
 
-function addFileToData(dataIdentifier, file)
+#=
+addFileToData ajout d'un fichier à une donnée
+@arg dataIdentifier : identifiant de la données
+@arg file : métadonnées du fichier récupérées depuis Nakala
+=#
+function addFileToData(dataIdentifier::String, file::Dict)
   headers = Dict(
     "X-API-KEY" => apiKey,
     "Content-Type" => "application/json"
