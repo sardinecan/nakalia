@@ -11,6 +11,24 @@ localARGS = isdefined(Base, :newARGS) ? newARGS : ARGS
 @show localARGS
 apikey = localARGS
 
+function authorSearch()
+  url = joinpath(apiurl, "authors/search")
+  headers = Dict(
+    "X-API-KEY" => "01234567-89ab-cdef-0123-456789abcdef",
+    "Content-Type" => "application/json"
+  )
+
+  body = Dict(
+    "q" => "morvan"
+  )
+
+  getAuthorsSearch = HTTP.request("GET", url, headers, body)
+  response = JSON.parse(String(HTTP.payload(getAuthorsSearch)))
+  return response
+end
+
+authorSearch()
+
 #=
 postCollection : cette fonction crée une collection
 @arg collectionName : nom de la collection
@@ -33,11 +51,34 @@ function postCollection(collectionName::String)
     )]
   )
 
-  postCollectionQuery = HTTP.request("POST", url, headers, JSON.json(body)) # envoi des données pour la création de la collection
-  response = JSON.parse(String(HTTP.payload(postCollectionQuery))) # réponse du server
-  #collectionId = collectionResponse["payload"]["id"] # récupération de l'id de la collection
+  # postCollectionQuery = HTTP.request("POST", url, headers, JSON.json(body)) # envoi des données pour la création de la collection
+  # response = JSON.parse(String(HTTP.payload(postCollectionQuery))) # réponse du server
+  # collectionId = collectionResponse["payload"]["id"] # récupération de l'id de la collection
   
-  return response
+  # return response
+  try
+    # Envoi de la requête HTTP POST
+    postCollectionQuery = HTTP.request("POST", url, headers, JSON.json(body))
+
+    #=== Vérification du code de statut de la réponse
+    status_code = HTTP.status(postCollectionQuery)
+    if status_code < 200 || status_code >= 300
+        error("Failed to create collection: HTTP status $status_code")
+    end
+    ===#
+
+    response = JSON.parse(String(HTTP.payload(postCollectionQuery)))
+    return response
+
+catch e
+    # Gestion spécifique des erreurs HTTP
+    if isa(e, HTTP.ExceptionRequest.StatusError)
+        return "Request failed with status code $(e.status): $(e.response)"
+    else
+        # Gestion des autres types d'erreurs
+        return "An unexpected error occurred: $(e)"
+    end
+end
 end
 
 #=
